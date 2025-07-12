@@ -19,6 +19,9 @@ export default function ProjectOverviewPage() {
   const [results, setResults] = useState<Result[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("insights")
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [insights, setInsights] = useState<any[]>([])
+  const [reminders, setReminders] = useState<any[]>([])
 
   useEffect(() => {
     const loadProjectData = () => {
@@ -31,6 +34,9 @@ export default function ProjectOverviewPage() {
             setHypotheses(data.hypotheses.filter(h => h.projectId === projectId))
             setReadings(data.readings.filter(r => r.projectId === projectId))
             setResults(data.results.filter(r => r.projectId === projectId))
+            
+            // Generate insights for this project
+            generateProjectInsights(foundProject, data)
           }
         }
       } catch (err) {
@@ -42,6 +48,85 @@ export default function ProjectOverviewPage() {
 
     loadProjectData()
   }, [projectId])
+
+  const generateProjectInsights = (project: Project, data: any) => {
+    const projectHypotheses = data.hypotheses.filter((h: Hypothesis) => h.projectId === projectId)
+    const projectReadings = data.readings.filter((r: Reading) => r.projectId === projectId)
+    const projectResults = data.results.filter((r: Result) => r.projectId === projectId)
+    
+    const newInsights = []
+    
+    // Check if project has hypotheses
+    if (projectHypotheses.length === 0) {
+      newInsights.push({
+        id: 1,
+        type: "warning",
+        title: "No Hypotheses Yet",
+        description: "This project doesn't have any hypotheses. Consider adding research questions to get started.",
+        date: new Date().toLocaleDateString()
+      })
+    }
+
+    // Check for active hypotheses without results
+    const activeHypotheses = projectHypotheses.filter((h: Hypothesis) => h.status === "active")
+    const hypothesesWithoutResults = activeHypotheses.filter((h: Hypothesis) => 
+      !projectResults.some((r: Result) => r.relatedHypotheses.includes(h.id))
+    )
+    
+    if (hypothesesWithoutResults.length > 0) {
+      newInsights.push({
+        id: 2,
+        type: "info",
+        title: "Active Hypotheses Need Testing",
+        description: `${hypothesesWithoutResults.length} active hypothesis(es) don't have associated results yet.`,
+        date: new Date().toLocaleDateString()
+      })
+    }
+
+    // Check for recent activity
+    if (projectReadings.length > 0 || projectResults.length > 0) {
+      newInsights.push({
+        id: 3,
+        type: "success",
+        title: "Project Progress",
+        description: `This project has ${projectReadings.length} readings and ${projectResults.length} results.`,
+        date: new Date().toLocaleDateString()
+      })
+    }
+
+    setInsights(newInsights)
+  }
+
+  const handleRefreshInsights = async () => {
+    setIsRefreshing(true)
+    // Simulate refresh delay
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    try {
+      const data = storage.loadData()
+      if (data && project) {
+        generateProjectInsights(project, data)
+      }
+    } catch (err) {
+      console.error("Error refreshing insights:", err)
+    }
+    
+    setIsRefreshing(false)
+  }
+
+  const handleViewAllInsights = () => {
+    // For now, just log - could navigate to a dedicated insights page
+    console.log("View all project insights clicked")
+  }
+
+  const handleViewAllReminders = () => {
+    // For now, just log - could navigate to a dedicated reminders page
+    console.log("View all project reminders clicked")
+  }
+
+  const handleCompleteReminder = (reminderId: number) => {
+    setReminders(prev => prev.filter(r => r.id !== reminderId))
+  }
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">Loading...</div>
@@ -68,19 +153,19 @@ export default function ProjectOverviewPage() {
     lastActivity: project.lastUpdated,
   }
 
-  const insights: any[] = []
-
-  const reminders: any[] = []
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Overview</h1>
         </div>
-        <Button variant="outline">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh Insights
+        <Button 
+          variant="outline"
+          onClick={handleRefreshInsights}
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? "Refreshing..." : "Refresh Insights"}
         </Button>
       </div>
 
@@ -170,7 +255,11 @@ export default function ProjectOverviewPage() {
                   </div>
                 </Alert>
               ))}
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleViewAllInsights}
+              >
                 View All Insights
               </Button>
             </>
@@ -207,13 +296,22 @@ export default function ProjectOverviewPage() {
                       <Calendar className="h-3 w-3 mr-1" />
                       Due: {reminder.dueDate}
                     </div>
-                    <Button variant="ghost" size="sm" className="ml-auto">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="ml-auto"
+                      onClick={() => handleCompleteReminder(reminder.id)}
+                    >
                       Complete
                     </Button>
                   </CardFooter>
                 </Card>
               ))}
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleViewAllReminders}
+              >
                 View All Reminders
               </Button>
             </>

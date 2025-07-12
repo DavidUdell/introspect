@@ -38,7 +38,10 @@ export default function ReadingsPage() {
   })
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
-  const [loading, setLoading] = useState(true)
+  const [selectedReading, setSelectedReading] = useState<Reading | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState("newest")
 
   // Load data on mount
   useEffect(() => {
@@ -46,15 +49,11 @@ export default function ReadingsPage() {
       try {
         const savedData = storage.loadData()
         if (savedData) {
-          // Only show global readings (projectId: 0) in the global readings page
-          const globalReadings = savedData.readings.filter(r => r.projectId === 0)
-          setReadings(globalReadings)
+          setReadings(savedData.readings)
           setProjects(savedData.projects)
         }
       } catch (err) {
         console.error("Error loading data:", err)
-      } finally {
-        setLoading(false)
       }
     }
 
@@ -66,18 +65,15 @@ export default function ReadingsPage() {
 
     const reading: Reading = {
       id: Math.max(...readings.map(r => r.id), 0) + 1,
+      projectId: 1, // Default to first project for now
       title: newReading.title,
       authors: newReading.authors,
       source: newReading.source,
       year: Number.parseInt(newReading.year),
-      type: newReading.type,
-      tags: newReading.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag !== ""),
+      type: newReading.type as "journal" | "book" | "conference" | "website" | "other",
+      tags: newReading.tags.split(",").map(tag => tag.trim()).filter(tag => tag !== ""),
       notes: newReading.notes,
-      projectId: 0, // Global reading (not associated with a specific project)
-      relatedHypotheses: [],
+      relatedHypotheses: newReading.relatedHypotheses,
       dateAdded: new Date().toISOString().split("T")[0],
     }
 
@@ -106,7 +102,31 @@ export default function ReadingsPage() {
     setOpen(false)
   }
 
+  const handleViewDetails = (reading: Reading) => {
+    setSelectedReading(reading)
+    setDetailsOpen(true)
+  }
+
   const filteredReadings = activeTab === "all" ? readings : readings.filter((reading) => reading.type === activeTab)
+
+  const filteredAndSortedReadings = filteredReadings
+    .filter(reading => 
+      reading.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reading.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reading.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
+        case "oldest":
+          return new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime()
+        case "title":
+          return a.title.localeCompare(b.title)
+        default:
+          return 0
+      }
+    })
 
   return (
     <div className="space-y-6">
@@ -213,9 +233,14 @@ export default function ReadingsPage() {
       <div className="flex items-center space-x-4">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input placeholder="Search readings..." className="pl-9" />
+          <Input 
+            placeholder="Search readings..." 
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-        <Select defaultValue="newest">
+        <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -237,7 +262,7 @@ export default function ReadingsPage() {
         </TabsList>
         <TabsContent value={activeTab} className="mt-6">
           <div className="space-y-4">
-            {filteredReadings.map((reading) => (
+            {filteredAndSortedReadings.map((reading) => (
               <Card key={reading.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -270,7 +295,11 @@ export default function ReadingsPage() {
                 </CardContent>
                 <CardFooter className="flex justify-between text-xs text-gray-500">
                   <span>Added: {reading.dateAdded}</span>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleViewDetails(reading)}
+                  >
                     View Details
                   </Button>
                 </CardFooter>
@@ -279,6 +308,72 @@ export default function ReadingsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Reading Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedReading?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedReading?.authors} • {selectedReading?.year} • {selectedReading?.source}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReading && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Type:</span> {selectedReading.type}
+                </div>
+                <div>
+                  <span className="font-medium">Added:</span> {selectedReading.dateAdded}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Notes:</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                  {selectedReading.notes || "No notes added."}
+                </p>
+              </div>
+              
+              {selectedReading.tags.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Tags:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReading.tags.map((tag, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full"
+                      >
+                        <Tag className="h-3 w-3 mr-1 text-gray-500" />
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {selectedReading.relatedHypotheses.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Related Hypotheses:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReading.relatedHypotheses.map((id) => (
+                      <div key={id} className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded-full">
+                        Hypothesis #{id}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

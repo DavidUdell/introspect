@@ -27,15 +27,18 @@ export default function ResultsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [newResult, setNewResult] = useState({
     title: "",
-    description: "",
     projectId: "",
+    description: "",
     findings: "",
     conclusion: "",
     status: "inconclusive",
     confidence: "low",
+    relatedHypotheses: [],
   })
   const [open, setOpen] = useState(false)
   const [expandedResults, setExpandedResults] = useState<number[]>([])
+  const [selectedResult, setSelectedResult] = useState<Result | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   // Load data on mount
   useEffect(() => {
@@ -55,11 +58,9 @@ export default function ResultsPage() {
   }, [])
 
   const toggleExpand = (id: number) => {
-    if (expandedResults.includes(id)) {
-      setExpandedResults(expandedResults.filter((resultId) => resultId !== id))
-    } else {
-      setExpandedResults([...expandedResults, id])
-    }
+    setExpandedResults(prev => 
+      prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
+    )
   }
 
   const handleCreateResult = () => {
@@ -67,15 +68,15 @@ export default function ResultsPage() {
 
     const result: Result = {
       id: Math.max(...results.map(r => r.id), 0) + 1,
+      projectId: Number.parseInt(newResult.projectId) || 1,
       title: newResult.title,
       description: newResult.description,
-      date: new Date().toISOString().split("T")[0],
-      projectId: Number.parseInt(newResult.projectId) || 1,
-      relatedHypotheses: [],
       findings: newResult.findings,
       conclusion: newResult.conclusion,
-      status: newResult.status as "supports" | "partially_supports" | "contradicts" | "inconclusive",
-      confidence: newResult.confidence as "low" | "medium" | "high",
+      status: newResult.status as "supports" | "contradicts" | "partially_supports" | "inconclusive",
+      confidence: newResult.confidence as "high" | "medium" | "low",
+      relatedHypotheses: newResult.relatedHypotheses,
+      date: new Date().toISOString().split("T")[0],
     }
 
     const updatedResults = [...results, result]
@@ -92,14 +93,20 @@ export default function ResultsPage() {
     
     setNewResult({
       title: "",
-      description: "",
       projectId: "",
+      description: "",
       findings: "",
       conclusion: "",
       status: "inconclusive",
       confidence: "low",
+      relatedHypotheses: [],
     })
     setOpen(false)
+  }
+
+  const handleViewDetails = (result: Result) => {
+    setSelectedResult(result)
+    setDetailsOpen(true)
   }
 
   const getStatusIcon = (status: string) => {
@@ -314,13 +321,81 @@ export default function ResultsPage() {
                 <span className="text-gray-300 dark:text-gray-600">•</span>
                 {getConfidenceBadge(result.confidence)}
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => handleViewDetails(result)}>
                 View Details
               </Button>
             </CardFooter>
           </Card>
         ))}
       </div>
+
+      {/* Result Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedResult?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedResult?.date} • Project ID: {selectedResult?.projectId}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedResult && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Description:</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {selectedResult.description}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Findings:</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                  {selectedResult.findings}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Conclusion:</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                  {selectedResult.conclusion}
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium mb-2">Hypothesis Status:</h4>
+                  <div className="flex items-center gap-1">
+                    {getStatusIcon(selectedResult.status)}
+                    <span className="text-sm">{getStatusText(selectedResult.status)}</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Confidence Level:</h4>
+                  {getConfidenceBadge(selectedResult.confidence)}
+                </div>
+              </div>
+              
+              {selectedResult.relatedHypotheses.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Related Hypotheses:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedResult.relatedHypotheses.map((id) => (
+                      <div key={id} className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded-full">
+                        Hypothesis #{id}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -32,6 +32,8 @@ export default function ProjectHypothesesPage() {
   })
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [editingHypothesis, setEditingHypothesis] = useState<Hypothesis | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   // Load data on mount
   useEffect(() => {
@@ -81,6 +83,76 @@ export default function ProjectHypothesesPage() {
     
     setNewHypothesis({ statement: "", assumptions: "", status: "active" })
     setOpen(false)
+  }
+
+  const handleEditHypothesis = (hypothesis: Hypothesis) => {
+    setEditingHypothesis(hypothesis)
+    setEditOpen(true)
+  }
+
+  const handleUpdateHypothesis = () => {
+    if (!editingHypothesis) return
+
+    const updatedHypothesis = {
+      ...editingHypothesis,
+      statement: editingHypothesis.statement,
+      assumptions: editingHypothesis.assumptions,
+      status: editingHypothesis.status,
+    }
+
+    const updatedHypotheses = hypotheses.map(h => 
+      h.id === editingHypothesis.id ? updatedHypothesis : h
+    )
+    setHypotheses(updatedHypotheses)
+    
+    // Save to storage
+    const savedData = storage.loadData()
+    if (savedData) {
+      const allHypotheses = savedData.hypotheses.map(h => 
+        h.id === editingHypothesis.id ? updatedHypothesis : h
+      )
+      storage.saveData({
+        ...savedData,
+        hypotheses: allHypotheses
+      })
+    }
+    
+    setEditingHypothesis(null)
+    setEditOpen(false)
+  }
+
+  const handleDeleteHypothesis = (id: number) => {
+    const updatedHypotheses = hypotheses.filter(h => h.id !== id)
+    setHypotheses(updatedHypotheses)
+    
+    // Save to storage
+    const savedData = storage.loadData()
+    if (savedData) {
+      const allHypotheses = savedData.hypotheses.filter(h => h.id !== id)
+      storage.saveData({
+        ...savedData,
+        hypotheses: allHypotheses
+      })
+    }
+  }
+
+  const handleStatusChange = (hypothesisId: number, newStatus: "confirmed" | "rejected") => {
+    const updatedHypotheses = hypotheses.map(h => 
+      h.id === hypothesisId ? { ...h, status: newStatus } : h
+    )
+    setHypotheses(updatedHypotheses)
+    
+    // Save to storage
+    const savedData = storage.loadData()
+    if (savedData) {
+      const allHypotheses = savedData.hypotheses.map(h => 
+        h.id === hypothesisId ? { ...h, status: newStatus } : h
+      )
+      storage.saveData({
+        ...savedData,
+        hypotheses: allHypotheses
+      })
+    }
   }
 
   if (loading) {
@@ -186,10 +258,19 @@ export default function ProjectHypothesesPage() {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleEditHypothesis(hypothesis)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-red-500 hover:text-red-600"
+                      onClick={() => handleDeleteHypothesis(hypothesis.id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -231,6 +312,7 @@ export default function ProjectHypothesesPage() {
                     variant="outline"
                     size="sm"
                     className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                    onClick={() => handleStatusChange(hypothesis.id, "confirmed")}
                   >
                     <Check className="mr-1 h-3 w-3" />
                     Confirm
@@ -239,6 +321,7 @@ export default function ProjectHypothesesPage() {
                     variant="outline"
                     size="sm"
                     className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                    onClick={() => handleStatusChange(hypothesis.id, "rejected")}
                   >
                     <X className="mr-1 h-3 w-3" />
                     Reject
@@ -249,6 +332,70 @@ export default function ProjectHypothesesPage() {
           ))
         )}
       </div>
+
+      {/* Edit Hypothesis Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Hypothesis</DialogTitle>
+            <DialogDescription>Update your research hypothesis and key assumptions.</DialogDescription>
+          </DialogHeader>
+          {editingHypothesis && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-statement">Hypothesis Statement</Label>
+                <Textarea
+                  id="edit-statement"
+                  value={editingHypothesis.statement}
+                  onChange={(e) => setEditingHypothesis({ ...editingHypothesis, statement: e.target.value })}
+                  placeholder="State your hypothesis clearly and specifically"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-assumptions">Key Assumptions</Label>
+                <Textarea
+                  id="edit-assumptions"
+                  value={editingHypothesis.assumptions.join("\n")}
+                  onChange={(e) => setEditingHypothesis({ 
+                    ...editingHypothesis, 
+                    assumptions: e.target.value.split("\n").filter((a) => a.trim() !== "")
+                  })}
+                  placeholder="List each assumption on a new line"
+                  rows={3}
+                />
+                <p className="text-xs text-gray-500">Enter each assumption on a new line</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editingHypothesis.status}
+                  onValueChange={(value: string) => setEditingHypothesis({ 
+                    ...editingHypothesis, 
+                    status: value as "draft" | "active" | "testing" | "confirmed" | "rejected"
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="testing">Testing</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateHypothesis}>Update Hypothesis</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

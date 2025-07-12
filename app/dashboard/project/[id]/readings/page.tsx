@@ -41,6 +41,10 @@ export default function ProjectReadingsPage() {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
   const [loading, setLoading] = useState(true)
+  const [selectedReading, setSelectedReading] = useState<Reading | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState("newest")
 
   // Load data on mount
   useEffect(() => {
@@ -77,7 +81,7 @@ export default function ProjectReadingsPage() {
       authors: newReading.authors,
       source: newReading.source,
       year: Number.parseInt(newReading.year),
-      type: newReading.type,
+      type: newReading.type as "journal" | "book" | "conference" | "website" | "other",
       tags: newReading.tags
         .split(",")
         .map((tag) => tag.trim())
@@ -113,6 +117,11 @@ export default function ProjectReadingsPage() {
     setOpen(false)
   }
 
+  const handleViewDetails = (reading: Reading) => {
+    setSelectedReading(reading)
+    setDetailsOpen(true)
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Loading...</div>
   }
@@ -132,6 +141,25 @@ export default function ProjectReadingsPage() {
   }
 
   const filteredReadings = activeTab === "all" ? readings : readings.filter((reading) => reading.type === activeTab)
+
+  const filteredAndSortedReadings = filteredReadings
+    .filter(reading => 
+      reading.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reading.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reading.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
+        case "oldest":
+          return new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime()
+        case "title":
+          return a.title.localeCompare(b.title)
+        default:
+          return 0
+      }
+    })
 
   return (
     <div className="space-y-6">
@@ -240,9 +268,14 @@ export default function ProjectReadingsPage() {
       <div className="flex items-center space-x-4">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input placeholder="Search readings..." className="pl-9" />
+          <Input 
+            placeholder="Search readings..." 
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-        <Select defaultValue="newest">
+        <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -264,12 +297,12 @@ export default function ProjectReadingsPage() {
         </TabsList>
         <TabsContent value={activeTab} className="mt-6">
           <div className="space-y-4">
-            {filteredReadings.length === 0 ? (
+            {filteredAndSortedReadings.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-lg text-gray-500">No readings yet. Add your first reading to get started!</p>
               </div>
             ) : (
-              filteredReadings.map((reading) => (
+              filteredAndSortedReadings.map((reading) => (
                 <Card key={reading.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -302,7 +335,11 @@ export default function ProjectReadingsPage() {
                   </CardContent>
                   <CardFooter className="flex justify-between text-xs text-gray-500">
                     <span>Added: {reading.dateAdded}</span>
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleViewDetails(reading)}
+                    >
                       View Details
                     </Button>
                   </CardFooter>
@@ -312,6 +349,72 @@ export default function ProjectReadingsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Reading Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedReading?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedReading?.authors} • {selectedReading?.year} • {selectedReading?.source}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReading && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Type:</span> {selectedReading.type}
+                </div>
+                <div>
+                  <span className="font-medium">Added:</span> {selectedReading.dateAdded}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Notes:</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                  {selectedReading.notes || "No notes added."}
+                </p>
+              </div>
+              
+              {selectedReading.tags.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Tags:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReading.tags.map((tag, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full"
+                      >
+                        <Tag className="h-3 w-3 mr-1 text-gray-500" />
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {selectedReading.relatedHypotheses.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Related Hypotheses:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReading.relatedHypotheses.map((id) => (
+                      <div key={id} className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded-full">
+                        Hypothesis #{id}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 
