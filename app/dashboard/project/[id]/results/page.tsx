@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -15,20 +17,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState, useEffect } from "react"
-import { Plus, ChevronDown, ChevronUp, FileCheck, FileX, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Plus, ChevronDown, ChevronUp, FileCheck, FileX, AlertTriangle } from "lucide-react"
+import Link from "next/link"
 import { storage, type Project, type Result } from "@/lib/storage"
 
-// Sample results data
-const initialResults: any[] = []
-
-export default function ResultsPage() {
+export default function ProjectResultsPage() {
+  const params = useParams()
+  const projectId = Number(params.id)
+  const [project, setProject] = useState<Project | null>(null)
   const [results, setResults] = useState<Result[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
   const [newResult, setNewResult] = useState({
     title: "",
     description: "",
-    projectId: "",
     findings: "",
     conclusion: "",
     status: "inconclusive",
@@ -36,6 +36,7 @@ export default function ResultsPage() {
   })
   const [open, setOpen] = useState(false)
   const [expandedResults, setExpandedResults] = useState<number[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Load data on mount
   useEffect(() => {
@@ -43,16 +44,21 @@ export default function ResultsPage() {
       try {
         const savedData = storage.loadData()
         if (savedData) {
-          setResults(savedData.results)
-          setProjects(savedData.projects)
+          const foundProject = savedData.projects.find(p => p.id === projectId)
+          if (foundProject) {
+            setProject(foundProject)
+            setResults(savedData.results.filter(r => r.projectId === projectId))
+          }
         }
       } catch (err) {
         console.error("Error loading data:", err)
+      } finally {
+        setLoading(false)
       }
     }
 
     loadData()
-  }, [])
+  }, [projectId])
 
   const toggleExpand = (id: number) => {
     if (expandedResults.includes(id)) {
@@ -70,7 +76,7 @@ export default function ResultsPage() {
       title: newResult.title,
       description: newResult.description,
       date: new Date().toISOString().split("T")[0],
-      projectId: Number.parseInt(newResult.projectId) || 1,
+      projectId: projectId,
       relatedHypotheses: [],
       findings: newResult.findings,
       conclusion: newResult.conclusion,
@@ -86,14 +92,13 @@ export default function ResultsPage() {
     if (savedData) {
       storage.saveData({
         ...savedData,
-        results: updatedResults
+        results: [...savedData.results, result]
       })
     }
     
     setNewResult({
       title: "",
       description: "",
-      projectId: "",
       findings: "",
       conclusion: "",
       status: "inconclusive",
@@ -109,7 +114,7 @@ export default function ResultsPage() {
       case "contradicts":
         return <FileX className="h-4 w-4 text-red-500" />
       case "partially_supports":
-        return <FileCheck className="h-4 w-4 text-amber-500" />
+        return <AlertTriangle className="h-4 w-4 text-amber-500" />
       default:
         return <AlertTriangle className="h-4 w-4 text-gray-500" />
     }
@@ -118,9 +123,9 @@ export default function ResultsPage() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "supports":
-        return "Supports Hypothesis"
+        return "Supports"
       case "contradicts":
-        return "Contradicts Hypothesis"
+        return "Contradicts"
       case "partially_supports":
         return "Partially Supports"
       default:
@@ -142,10 +147,31 @@ export default function ResultsPage() {
     )
   }
 
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Loading...</div>
+  }
+
+  if (!project) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-lg text-gray-500">Project not found</p>
+        <Link href="/dashboard">
+          <Button variant="outline" className="mt-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Projects
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Research Results</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Results</h1>
+          <p className="text-gray-500">Project: {project.title}</p>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -167,21 +193,6 @@ export default function ResultsPage() {
                   onChange={(e) => setNewResult({ ...newResult, title: e.target.value })}
                   placeholder="Enter a descriptive title"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="project">Research Project</Label>
-                <Select onValueChange={(value: string) => setNewResult({ ...newResult, projectId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id.toString()}>
-                        {project.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
@@ -260,67 +271,73 @@ export default function ResultsPage() {
       </div>
 
       <div className="space-y-4">
-        {results.map((result) => (
-          <Card key={result.id}>
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">{result.title}</CardTitle>
-                  <CardDescription>
-                    {result.date} • Project ID: {result.projectId}
-                  </CardDescription>
+        {results.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-lg text-gray-500">No results yet. Add your first result to get started!</p>
+          </div>
+        ) : (
+          results.map((result) => (
+            <Card key={result.id}>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{result.title}</CardTitle>
+                    <CardDescription>
+                      {result.date}
+                    </CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => toggleExpand(result.id)}>
+                    {expandedResults.includes(result.id) ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => toggleExpand(result.id)}>
-                  {expandedResults.includes(result.id) ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400">{result.description}</p>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400">{result.description}</p>
 
-              {expandedResults.includes(result.id) && (
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium mb-1">Findings:</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{result.findings}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium mb-1">Conclusion:</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{result.conclusion}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium mb-1">Related Hypotheses:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {result.relatedHypotheses.map((id) => (
-                        <div key={id} className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
-                          Hypothesis #{id}
-                        </div>
-                      ))}
+                {expandedResults.includes(result.id) && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Findings:</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{result.findings}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Conclusion:</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{result.conclusion}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Related Hypotheses:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {result.relatedHypotheses.map((id) => (
+                          <div key={id} className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                            Hypothesis #{id}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-between pt-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {getStatusIcon(result.status)}
+                    <span className="text-xs font-medium">{getStatusText(result.status)}</span>
+                  </div>
+                  <span className="text-gray-300 dark:text-gray-600">•</span>
+                  {getConfidenceBadge(result.confidence)}
                 </div>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-between pt-2">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  {getStatusIcon(result.status)}
-                  <span className="text-xs font-medium">{getStatusText(result.status)}</span>
-                </div>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
-                {getConfidenceBadge(result.confidence)}
-              </div>
-              <Button variant="outline" size="sm">
-                View Details
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+                <Button variant="outline" size="sm">
+                  View Details
+                </Button>
+              </CardFooter>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   )
-}
+} 

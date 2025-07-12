@@ -13,8 +13,10 @@ export default function DashboardLayout({
       <header className="sticky top-0 z-10 bg-white dark:bg-gray-950 border-b">
         <div className="container flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-2">
-            <BrainCircuit className="h-6 w-6 text-purple-600" />
-            <h1 className="text-xl font-bold">Introspect</h1>
+            <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <BrainCircuit className="h-6 w-6 text-purple-600" />
+              <h1 className="text-xl font-bold">Introspect</h1>
+            </Link>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/dashboard/settings">
@@ -26,25 +28,7 @@ export default function DashboardLayout({
           </div>
         </div>
         <div className="container px-4 pb-2">
-          <Tabs defaultValue="projects" className="w-full">
-            <TabsList className="grid grid-cols-5 h-9">
-              <TabsTrigger value="projects" asChild>
-                <Link href="/dashboard">Projects</Link>
-              </TabsTrigger>
-              <TabsTrigger value="hypotheses" asChild>
-                <Link href="/dashboard/hypotheses">Hypotheses</Link>
-              </TabsTrigger>
-              <TabsTrigger value="readings" asChild>
-                <Link href="/dashboard/readings">Readings</Link>
-              </TabsTrigger>
-              <TabsTrigger value="results" asChild>
-                <Link href="/dashboard/results">Results</Link>
-              </TabsTrigger>
-              <TabsTrigger value="overview" asChild>
-                <Link href="/dashboard/overview">Overview</Link>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Navigation tabs removed - logo now serves as home navigation */}
         </div>
       </header>
 

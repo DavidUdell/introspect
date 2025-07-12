@@ -14,47 +14,16 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Edit, Trash2, Check, X } from "lucide-react"
+import { storage, type Project, type Hypothesis } from "@/lib/storage"
 
 // Sample hypothesis data
-const initialHypotheses = [
-  {
-    id: 1,
-    projectId: 1,
-    statement:
-      "Rising ocean temperatures above 2°C will cause a 30% reduction in coral reef biodiversity within 5 years.",
-    assumptions: [
-      "Current rate of temperature increase remains constant",
-      "No significant adaptation mechanisms emerge in coral species",
-    ],
-    status: "active",
-    createdAt: "2023-10-15",
-  },
-  {
-    id: 2,
-    projectId: 1,
-    statement: "Marine species migration patterns will shift northward by at least 50km in response to warming waters.",
-    assumptions: ["No geographical barriers prevent migration", "Food sources are available in new habitats"],
-    status: "active",
-    createdAt: "2023-11-02",
-  },
-  {
-    id: 3,
-    projectId: 2,
-    statement:
-      "Neural networks can detect early cardiovascular disease markers with 15% higher accuracy than traditional methods.",
-    assumptions: [
-      "Sufficient quality training data is available",
-      "Model can be optimized for low false negative rate",
-    ],
-    status: "testing",
-    createdAt: "2023-09-28",
-  },
-]
+const initialHypotheses: any[] = []
 
 export default function HypothesesPage() {
-  const [hypotheses, setHypotheses] = useState(initialHypotheses)
+  const [hypotheses, setHypotheses] = useState<Hypothesis[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [newHypothesis, setNewHypothesis] = useState({
     projectId: "",
     statement: "",
@@ -63,19 +32,47 @@ export default function HypothesesPage() {
   })
   const [open, setOpen] = useState(false)
 
+  // Load data on mount
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        const savedData = storage.loadData()
+        if (savedData) {
+          setHypotheses(savedData.hypotheses)
+          setProjects(savedData.projects)
+        }
+      } catch (err) {
+        console.error("Error loading data:", err)
+      }
+    }
+
+    loadData()
+  }, [])
+
   const handleCreateHypothesis = () => {
     if (newHypothesis.statement.trim() === "") return
 
-    const hypothesis = {
-      id: hypotheses.length + 1,
+    const hypothesis: Hypothesis = {
+      id: Math.max(...hypotheses.map(h => h.id), 0) + 1,
       projectId: Number.parseInt(newHypothesis.projectId) || 1,
       statement: newHypothesis.statement,
       assumptions: newHypothesis.assumptions.split("\n").filter((a) => a.trim() !== ""),
-      status: newHypothesis.status,
+      status: newHypothesis.status as "draft" | "active" | "testing" | "confirmed" | "rejected",
       createdAt: new Date().toISOString().split("T")[0],
     }
 
-    setHypotheses([...hypotheses, hypothesis])
+    const updatedHypotheses = [...hypotheses, hypothesis]
+    setHypotheses(updatedHypotheses)
+    
+    // Save to storage
+    const savedData = storage.loadData()
+    if (savedData) {
+      storage.saveData({
+        ...savedData,
+        hypotheses: updatedHypotheses
+      })
+    }
+    
     setNewHypothesis({ projectId: "", statement: "", assumptions: "", status: "active" })
     setOpen(false)
   }
@@ -99,13 +96,16 @@ export default function HypothesesPage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="project">Research Project</Label>
-                <Select onValueChange={(value) => setNewHypothesis({ ...newHypothesis, projectId: value })}>
+                <Select onValueChange={(value: string) => setNewHypothesis({ ...newHypothesis, projectId: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Climate Change Impact on Marine Ecosystems</SelectItem>
-                    <SelectItem value="2">Machine Learning for Medical Diagnosis</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id.toString()}>
+                        {project.title}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -133,7 +133,7 @@ export default function HypothesesPage() {
                 <Label htmlFor="status">Status</Label>
                 <Select
                   defaultValue="active"
-                  onValueChange={(value) => setNewHypothesis({ ...newHypothesis, status: value })}
+                  onValueChange={(value: string) => setNewHypothesis({ ...newHypothesis, status: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />

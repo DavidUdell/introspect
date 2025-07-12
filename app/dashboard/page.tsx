@@ -14,45 +14,67 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, ArrowRight } from "lucide-react"
 import Link from "next/link"
-
-// Sample project data
-const initialProjects = [
-  {
-    id: 1,
-    title: "Climate Change Impact on Marine Ecosystems",
-    description: "Investigating the effects of rising ocean temperatures on coral reef biodiversity.",
-    lastUpdated: "2 days ago",
-    progress: 65,
-  },
-  {
-    id: 2,
-    title: "Machine Learning for Medical Diagnosis",
-    description: "Developing neural network models to improve early detection of cardiovascular diseases.",
-    lastUpdated: "5 days ago",
-    progress: 40,
-  },
-]
+import { storage, type Project } from "@/lib/storage"
 
 export default function DashboardPage() {
-  const [projects, setProjects] = useState(initialProjects)
+  const [projects, setProjects] = useState<Project[]>([])
   const [newProject, setNewProject] = useState({ title: "", description: "" })
   const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // Load data on mount
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        const savedData = storage.loadData()
+        if (savedData) {
+          setProjects(savedData.projects)
+        } else {
+          // Initialize with default data
+          const defaultData = storage.getDefaultData()
+          setProjects(defaultData.projects)
+          storage.saveData(defaultData)
+        }
+      } catch (err) {
+        console.error("Error loading data:", err)
+        // Fallback to default data
+        const defaultData = storage.getDefaultData()
+        setProjects(defaultData.projects)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const handleCreateProject = () => {
     if (newProject.title.trim() === "") return
 
-    const project = {
-      id: projects.length + 1,
+    const project: Project = {
+      id: Math.max(...projects.map(p => p.id), 0) + 1,
       title: newProject.title,
       description: newProject.description,
       lastUpdated: "Just now",
       progress: 0,
+      createdAt: new Date().toISOString(),
     }
 
-    setProjects([...projects, project])
+    const updatedProjects = [...projects, project]
+    setProjects(updatedProjects)
+    
+    // Save to storage
+    const savedData = storage.loadData()
+    if (savedData) {
+      storage.saveData({
+        ...savedData,
+        projects: updatedProjects,
+      })
+    }
+
     setNewProject({ title: "", description: "" })
     setOpen(false)
   }

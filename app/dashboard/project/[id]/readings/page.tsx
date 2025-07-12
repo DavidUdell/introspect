@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -16,16 +18,16 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useState, useEffect } from "react"
-import { Plus, BookOpen, FileText, LinkIcon, Search, Tag } from "lucide-react"
-import { storage, type Reading, type Project } from "@/lib/storage"
+import { ArrowLeft, Plus, BookOpen, FileText, LinkIcon, Search, Tag } from "lucide-react"
+import Link from "next/link"
+import { storage, type Project, type Reading, type Hypothesis } from "@/lib/storage"
 
-// Sample reading data
-const initialReadings: any[] = []
-
-export default function ReadingsPage() {
+export default function ProjectReadingsPage() {
+  const params = useParams()
+  const projectId = Number(params.id)
+  const [project, setProject] = useState<Project | null>(null)
   const [readings, setReadings] = useState<Reading[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
+  const [hypotheses, setHypotheses] = useState<Hypothesis[]>([])
   const [newReading, setNewReading] = useState({
     title: "",
     authors: "",
@@ -46,10 +48,15 @@ export default function ReadingsPage() {
       try {
         const savedData = storage.loadData()
         if (savedData) {
-          // Only show global readings (projectId: 0) in the global readings page
-          const globalReadings = savedData.readings.filter(r => r.projectId === 0)
-          setReadings(globalReadings)
-          setProjects(savedData.projects)
+          const foundProject = savedData.projects.find(p => p.id === projectId)
+          if (foundProject) {
+            setProject(foundProject)
+            const projectHypotheses = savedData.hypotheses.filter(h => h.projectId === projectId)
+            setHypotheses(projectHypotheses)
+            // Get readings for this project
+            const projectReadings = savedData.readings.filter(r => r.projectId === projectId)
+            setReadings(projectReadings)
+          }
         }
       } catch (err) {
         console.error("Error loading data:", err)
@@ -59,7 +66,7 @@ export default function ReadingsPage() {
     }
 
     loadData()
-  }, [])
+  }, [projectId])
 
   const handleCreateReading = () => {
     if (newReading.title.trim() === "") return
@@ -76,8 +83,8 @@ export default function ReadingsPage() {
         .map((tag) => tag.trim())
         .filter((tag) => tag !== ""),
       notes: newReading.notes,
-      projectId: 0, // Global reading (not associated with a specific project)
-      relatedHypotheses: [],
+      projectId: projectId,
+      relatedHypotheses: newReading.relatedHypotheses,
       dateAdded: new Date().toISOString().split("T")[0],
     }
 
@@ -89,7 +96,7 @@ export default function ReadingsPage() {
     if (savedData) {
       storage.saveData({
         ...savedData,
-        readings: updatedReadings
+        readings: [...savedData.readings, reading]
       })
     }
     
@@ -106,12 +113,33 @@ export default function ReadingsPage() {
     setOpen(false)
   }
 
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Loading...</div>
+  }
+
+  if (!project) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-lg text-gray-500">Project not found</p>
+        <Link href="/dashboard">
+          <Button variant="outline" className="mt-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Projects
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
   const filteredReadings = activeTab === "all" ? readings : readings.filter((reading) => reading.type === activeTab)
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Research Readings</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Readings</h1>
+          <p className="text-gray-500">Project: {project.title}</p>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -166,7 +194,7 @@ export default function ReadingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="type">Type</Label>
-                <Select defaultValue="journal" onValueChange={(value: string) => setNewReading({ ...newReading, type: value })}>
+                <Select onValueChange={(value: string) => setNewReading({ ...newReading, type: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -237,48 +265,54 @@ export default function ReadingsPage() {
         </TabsList>
         <TabsContent value={activeTab} className="mt-6">
           <div className="space-y-4">
-            {filteredReadings.map((reading) => (
-              <Card key={reading.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{reading.title}</CardTitle>
-                      <CardDescription>
-                        {reading.authors} • {reading.year} • {reading.source}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center">
-                      {reading.type === "journal" && <BookOpen className="h-4 w-4 text-blue-500" />}
-                      {reading.type === "book" && <FileText className="h-4 w-4 text-purple-500" />}
-                      {reading.type === "website" && <LinkIcon className="h-4 w-4 text-green-500" />}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{reading.notes}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {reading.tags.map((tag, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full"
-                      >
-                        <Tag className="h-3 w-3 mr-1 text-gray-500" />
-                        {tag}
+            {filteredReadings.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-lg text-gray-500">No readings yet. Add your first reading to get started!</p>
+              </div>
+            ) : (
+              filteredReadings.map((reading) => (
+                <Card key={reading.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{reading.title}</CardTitle>
+                        <CardDescription>
+                          {reading.authors} • {reading.year} • {reading.source}
+                        </CardDescription>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between text-xs text-gray-500">
-                  <span>Added: {reading.dateAdded}</span>
-                  <Button variant="ghost" size="sm">
-                    View Details
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                      <div className="flex items-center">
+                        {reading.type === "journal" && <BookOpen className="h-4 w-4 text-blue-500" />}
+                        {reading.type === "book" && <FileText className="h-4 w-4 text-purple-500" />}
+                        {reading.type === "website" && <LinkIcon className="h-4 w-4 text-green-500" />}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{reading.notes}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {reading.tags.map((tag, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full"
+                        >
+                          <Tag className="h-3 w-3 mr-1 text-gray-500" />
+                          {tag}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between text-xs text-gray-500">
+                    <span>Added: {reading.dateAdded}</span>
+                    <Button variant="ghost" size="sm">
+                      View Details
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
       </Tabs>
     </div>
   )
-}
+} 
