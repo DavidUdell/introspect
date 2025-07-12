@@ -9,7 +9,7 @@
 
 ```
 npm install --legacy-peer-deps
-npm dev run
+npm run dev
 ```
 
 This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
