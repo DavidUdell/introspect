@@ -1,7 +1,7 @@
 import type React from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
-import { BrainCircuit, Settings, User } from "lucide-react"
+import { BrainCircuit } from "lucide-react"
 
 export default function DashboardLayout({
   children,
@@ -16,14 +16,6 @@ export default function DashboardLayout({
             <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <BrainCircuit className="h-6 w-6 text-purple-600" />
               <h1 className="text-xl font-bold">Introspect</h1>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard/settings">
-              <Settings className="h-5 w-5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
-            </Link>
-            <Link href="/dashboard/profile">
-              <User className="h-5 w-5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
             </Link>
           </div>
         </div>

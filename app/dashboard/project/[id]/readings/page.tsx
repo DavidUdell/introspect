@@ -138,7 +138,6 @@ export default function ProjectReadingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Readings</h1>
-          <p className="text-gray-500">Project: {project.title}</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

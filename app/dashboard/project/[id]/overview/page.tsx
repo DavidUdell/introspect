@@ -76,8 +76,7 @@ export default function ProjectOverviewPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{project.title}</h1>
-          <p className="text-gray-500">{project.description}</p>
+          <h1 className="text-2xl font-bold">Overview</h1>
         </div>
         <Button variant="outline">
           <RefreshCw className="mr-2 h-4 w-4" />
