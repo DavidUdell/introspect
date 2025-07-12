@@ -73,11 +73,10 @@ export default function ProjectLayout({
         <div className="flex items-center space-x-2">
           {/* Overview tab - positioned on the left */}
           <Tabs value={getActiveTab()} className="w-auto">
-            <TabsList className="h-10 bg-gray-100 dark:bg-gray-800">
+            <TabsList className="h-10">
               <TabsTrigger 
                 value="overview" 
                 asChild
-                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-gray-100"
               >
                 <Link href={`/dashboard/project/${projectId}/overview`}>Overview</Link>
               </TabsTrigger>
