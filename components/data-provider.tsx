@@ -28,6 +28,10 @@ interface DataContextType {
   updateResult: (id: number, updates: Partial<Result>) => void
   deleteResult: (id: number) => void
   
+  // Reminder operations
+  dismissReminder: (reminderId: string) => void
+  isReminderDismissed: (reminderId: string) => boolean
+  
   // Utility operations
   clearAllData: () => void
   exportData: () => string
@@ -261,6 +265,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return success
   }
 
+  // Reminder operations
+  const dismissReminder = (reminderId: string) => {
+    if (!data) return
+
+    if (!data.dismissedReminders.includes(reminderId)) {
+      setData({
+        ...data,
+        dismissedReminders: [...data.dismissedReminders, reminderId],
+      })
+    }
+  }
+
+  const isReminderDismissed = (reminderId: string) => {
+    if (!data) return false
+    return data.dismissedReminders.includes(reminderId)
+  }
+
   const value: DataContextType = {
     data,
     loading,
@@ -277,6 +298,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addResult,
     updateResult,
     deleteResult,
+    dismissReminder,
+    isReminderDismissed,
     clearAllData,
     exportData,
     importData,

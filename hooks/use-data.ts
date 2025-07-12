@@ -231,6 +231,23 @@ export function useData() {
     return success
   }, [])
 
+  // Reminder operations
+  const dismissReminder = useCallback((reminderId: string) => {
+    if (!data) return
+
+    if (!data.dismissedReminders.includes(reminderId)) {
+      setData({
+        ...data,
+        dismissedReminders: [...data.dismissedReminders, reminderId],
+      })
+    }
+  }, [data])
+
+  const isReminderDismissed = useCallback((reminderId: string) => {
+    if (!data) return false
+    return data.dismissedReminders.includes(reminderId)
+  }, [data])
+
   // Get related data
   const getProjectHypotheses = useCallback((projectId: number) => {
     return data?.hypotheses.filter((h: Hypothesis) => h.projectId === projectId) || []
@@ -273,6 +290,10 @@ export function useData() {
     addResult,
     updateResult,
     deleteResult,
+    
+    // Reminder operations
+    dismissReminder,
+    isReminderDismissed,
     
     // Utility operations
     clearAllData,

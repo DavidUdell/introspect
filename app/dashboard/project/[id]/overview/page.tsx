@@ -8,10 +8,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, ArrowLeft, BrainCircuit, Calendar, CheckCircle, Clock, X } from "lucide-react"
 import Link from "next/link"
 import { storage, type Project, type Hypothesis, type Reading, type Result } from "@/lib/storage"
+import { useData } from "@/hooks/use-data"
 
 export default function ProjectOverviewPage() {
   const params = useParams()
   const projectId = Number(params.id)
+  const { dismissReminder } = useData()
   const [project, setProject] = useState<Project | null>(null)
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([])
   const [readings, setReadings] = useState<Reading[]>([])
@@ -226,92 +228,116 @@ export default function ProjectOverviewPage() {
 
     // Generate reminders based on project state
     if (projectHypotheses.length === 0) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Add your first hypothesis",
-        description: "Start your research by defining clear hypotheses or research questions",
-        priority: "high",
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 7 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/hypotheses`,
-          label: "Add hypotheses"
-        }
-      })
+      const reminderKey = `project-${projectId}-no-hypotheses`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Add your first hypothesis",
+          description: "Start your research by defining clear hypotheses or research questions",
+          priority: "high",
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 7 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/hypotheses`,
+            label: "Add hypotheses"
+          }
+        })
+      }
     } else if (projectHypotheses.length < 3) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Expand your hypotheses",
-        description: `You have ${projectHypotheses.length} hypothesis(es). Consider adding more to strengthen your research.`,
-        priority: "medium",
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 14 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/hypotheses`,
-          label: "Expand hypotheses"
-        }
-      })
+      const reminderKey = `project-${projectId}-few-hypotheses`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Expand your hypotheses",
+          description: `You have ${projectHypotheses.length} hypothesis(es). Consider adding more to strengthen your research.`,
+          priority: "medium",
+          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 14 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/hypotheses`,
+            label: "Expand hypotheses"
+          }
+        })
+      }
     }
 
     if (projectReadings.length === 0) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Start your literature review",
-        description: "Begin adding relevant readings to support your research",
-        priority: "high",
-        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 5 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/readings`,
-          label: "Start literature review"
-        }
-      })
+      const reminderKey = `project-${projectId}-no-readings`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Start your literature review",
+          description: "Begin adding relevant readings to support your research",
+          priority: "high",
+          dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 5 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/readings`,
+            label: "Start literature review"
+          }
+        })
+      }
     } else if (projectReadings.length < 5) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Continue literature review",
-        description: `You have ${projectReadings.length} reading(s). Aim for at least 5-10 sources for a solid foundation.`,
-        priority: "medium",
-        dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 10 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/readings`,
-          label: "Add more readings"
-        }
-      })
+      const reminderKey = `project-${projectId}-few-readings`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Continue literature review",
+          description: `You have ${projectReadings.length} reading(s). Aim for at least 5-10 sources for a solid foundation.`,
+          priority: "medium",
+          dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 10 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/readings`,
+            label: "Add more readings"
+          }
+        })
+      }
     }
 
     // Add reminder for stale readings
     const currentYear = new Date().getFullYear()
     const oldReadings = projectReadings.filter((r: Reading) => r.year < currentYear - 2)
     if (oldReadings.length > 0 && projectReadings.length >= 3) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Update your literature review",
-        description: `${oldReadings.length} reading(s) are more than 2 years old. Add recent sources to stay current.`,
-        priority: "medium",
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 7 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/readings`,
-          label: "Add recent readings"
-        }
-      })
+      const reminderKey = `project-${projectId}-old-readings`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Update your literature review",
+          description: `${oldReadings.length} reading(s) are more than 2 years old. Add recent sources to stay current.`,
+          priority: "medium",
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 7 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/readings`,
+            label: "Add recent readings"
+          }
+        })
+      }
     }
 
     if (projectResults.length === 0 && projectReadings.length > 0) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Document your findings",
-        description: "Start recording results and findings from your research",
-        priority: "high",
-        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 3 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/results`,
-          label: "Document results"
-        }
-      })
+      const reminderKey = `project-${projectId}-no-results`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Document your findings",
+          description: "Start recording results and findings from your research",
+          priority: "high",
+          dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 3 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/results`,
+            label: "Document results"
+          }
+        })
+      }
     }
 
     // Check for hypotheses that need results
@@ -321,57 +347,75 @@ export default function ProjectOverviewPage() {
     )
     
     if (hypothesesWithoutResults.length > 0) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Test your hypotheses",
-        description: `${hypothesesWithoutResults.length} active hypothesis(es) need results or testing`,
-        priority: "medium",
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 7 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/results`,
-          label: "Test hypotheses"
-        }
-      })
+      const reminderKey = `project-${projectId}-hypotheses-need-results`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Test your hypotheses",
+          description: `${hypothesesWithoutResults.length} active hypothesis(es) need results or testing`,
+          priority: "medium",
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 7 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/results`,
+            label: "Test hypotheses"
+          }
+        })
+      }
     }
 
     // Add reminder for inconclusive results
     const inconclusiveResults = projectResults.filter((r: Result) => r.status === "inconclusive" || r.confidence === "low")
     if (inconclusiveResults.length > 0) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Refine your results",
-        description: `${inconclusiveResults.length} result(s) are inconclusive or have low confidence. Gather more data or improve analysis.`,
-        priority: "medium",
-        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 5 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/results`,
-          label: "Refine results"
-        }
-      })
+      const reminderKey = `project-${projectId}-inconclusive-results`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Refine your results",
+          description: `${inconclusiveResults.length} result(s) are inconclusive or have low confidence. Gather more data or improve analysis.`,
+          priority: "medium",
+          dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 5 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/results`,
+            label: "Refine results"
+          }
+        })
+      }
     }
 
     // Add a general progress reminder if project is well underway
     if (projectHypotheses.length >= 3 && projectReadings.length >= 5 && projectResults.length >= 2) {
-      newReminders.push({
-        id: reminderId++,
-        title: "Review and refine",
-        description: "Your project is well underway. Consider reviewing and refining your work",
-        priority: "low",
-        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 21 days from now
-        action: {
-          type: "navigate",
-          link: `/dashboard/project/${projectId}/overview`,
-          label: "Review project"
-        }
-      })
+      const reminderKey = `project-${projectId}-review-progress`
+      if (!data.dismissedReminders?.includes(reminderKey)) {
+        newReminders.push({
+          id: reminderId++,
+          key: reminderKey,
+          title: "Review and refine",
+          description: "Your project is well underway. Consider reviewing and refining your work",
+          priority: "low",
+          dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 21 days from now
+          action: {
+            type: "navigate",
+            link: `/dashboard/project/${projectId}/overview`,
+            label: "Review project"
+          }
+        })
+      }
     }
 
     setReminders(newReminders)
   }
 
   const handleCompleteReminder = (reminderId: number) => {
+    const reminder = reminders.find(r => r.id === reminderId)
+    if (reminder && reminder.key) {
+      // Use the data provider to dismiss the reminder persistently
+      dismissReminder(reminder.key)
+    }
+    // Also remove from local state for immediate UI update
     setReminders(prev => prev.filter(r => r.id !== reminderId))
   }
 

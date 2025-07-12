@@ -7,8 +7,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useState, useEffect } from "react"
 import { AlertCircle, ArrowRight, BrainCircuit, Calendar, CheckCircle, Clock, RefreshCw } from "lucide-react"
 import { storage, type Project, type Hypothesis, type Reading, type Result } from "@/lib/storage"
+import { useData } from "@/hooks/use-data"
 
 export default function OverviewPage() {
+  const { dismissReminder } = useData()
   const [activeTab, setActiveTab] = useState("insights")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [projectStats, setProjectStats] = useState({
@@ -129,6 +131,12 @@ export default function OverviewPage() {
   }
 
   const handleCompleteReminder = (reminderId: number) => {
+    const reminder = reminders.find(r => r.id === reminderId)
+    if (reminder && reminder.key) {
+      // Use the data provider to dismiss the reminder persistently
+      dismissReminder(reminder.key)
+    }
+    // Also remove from local state for immediate UI update
     setReminders(prev => prev.filter(r => r.id !== reminderId))
   }
 

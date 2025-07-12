@@ -54,6 +54,7 @@ export interface UserData {
   hypotheses: Hypothesis[]
   readings: Reading[]
   results: Result[]
+  dismissedReminders: string[] // Array of reminder identifiers that have been dismissed
   lastSync?: string
 }
 
@@ -150,6 +151,12 @@ class StorageManager {
 
     try {
       const parsed = JSON.parse(dataString)
+      
+      // Handle migration: add dismissedReminders field if it doesn't exist
+      if (!parsed.dismissedReminders) {
+        parsed.dismissedReminders = []
+      }
+      
       return parsed as UserData
     } catch (error) {
       console.error("Failed to parse stored data:", error)
@@ -181,6 +188,7 @@ class StorageManager {
       hypotheses: [],
       readings: [],
       results: [],
+      dismissedReminders: [],
     }
   }
 
@@ -199,6 +207,32 @@ class StorageManager {
       console.error("Failed to import data:", error)
       return false
     }
+  }
+
+  // Dismiss a reminder
+  dismissReminder(reminderId: string): boolean {
+    const data = this.loadData()
+    if (!data) return false
+
+    if (!data.dismissedReminders.includes(reminderId)) {
+      data.dismissedReminders.push(reminderId)
+      return this.saveData(data)
+    }
+    return true
+  }
+
+  // Check if a reminder is dismissed
+  isReminderDismissed(reminderId: string): boolean {
+    const data = this.loadData()
+    if (!data) return false
+    return data.dismissedReminders.includes(reminderId)
+  }
+
+  // Get all dismissed reminder IDs
+  getDismissedReminders(): string[] {
+    const data = this.loadData()
+    if (!data) return []
+    return data.dismissedReminders
   }
 }
 
