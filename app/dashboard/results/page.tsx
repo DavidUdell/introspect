@@ -15,98 +15,104 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Plus, ChevronDown, ChevronUp, FileCheck, FileX, AlertTriangle } from "lucide-react"
-import { storage, type Project, type Result } from "@/lib/storage"
 
 // Sample results data
-const initialResults: any[] = []
+const initialResults = [
+  {
+    id: 1,
+    title: "Coral Reef Biodiversity Survey - Site A",
+    description: "Field study measuring species diversity in coral reef ecosystem at Site A (tropical Pacific).",
+    date: "2023-11-10",
+    projectId: 1,
+    relatedHypotheses: [1, 2],
+    findings:
+      "Observed 22% reduction in species diversity compared to 2018 baseline. Water temperature increased by 1.2°C over the same period.",
+    conclusion:
+      "Data supports hypothesis that rising temperatures correlate with biodiversity reduction, though at a lower rate than predicted.",
+    status: "supports",
+    confidence: "medium",
+  },
+  {
+    id: 2,
+    title: "Neural Network Model Performance - Initial Test",
+    description: "First test of CNN model on cardiovascular imaging dataset.",
+    date: "2023-10-05",
+    projectId: 2,
+    relatedHypotheses: [3],
+    findings:
+      "Model achieved 82% accuracy, compared to 71% for traditional diagnostic methods. False negative rate was 8%, which is still above target threshold.",
+    conclusion:
+      "Initial results are promising but require model refinement to reduce false negative rate before clinical validation.",
+    status: "partially_supports",
+    confidence: "low",
+  },
+  {
+    id: 3,
+    title: "Marine Species Migration Tracking",
+    description: "Analysis of 5-year tracking data for key indicator species.",
+    date: "2023-12-01",
+    projectId: 1,
+    relatedHypotheses: [2],
+    findings:
+      "Average northward migration of 38km observed across all tracked species. Some species showed no significant movement pattern.",
+    conclusion:
+      "Migration patterns support hypothesis direction but magnitude is less than predicted. Geographical barriers appear to be limiting factor for some species.",
+    status: "partially_supports",
+    confidence: "medium",
+  },
+]
 
 export default function ResultsPage() {
-  const [results, setResults] = useState<Result[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
+  const [results, setResults] = useState(initialResults)
   const [newResult, setNewResult] = useState({
     title: "",
-    projectId: "",
     description: "",
+    projectId: "",
     findings: "",
     conclusion: "",
     status: "inconclusive",
     confidence: "low",
-    relatedHypotheses: [],
   })
   const [open, setOpen] = useState(false)
   const [expandedResults, setExpandedResults] = useState<number[]>([])
-  const [selectedResult, setSelectedResult] = useState<Result | null>(null)
-  const [detailsOpen, setDetailsOpen] = useState(false)
-
-  // Load data on mount
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        const savedData = storage.loadData()
-        if (savedData) {
-          setResults(savedData.results)
-          setProjects(savedData.projects)
-        }
-      } catch (err) {
-        console.error("Error loading data:", err)
-      }
-    }
-
-    loadData()
-  }, [])
 
   const toggleExpand = (id: number) => {
-    setExpandedResults(prev => 
-      prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
-    )
+    if (expandedResults.includes(id)) {
+      setExpandedResults(expandedResults.filter((resultId) => resultId !== id))
+    } else {
+      setExpandedResults([...expandedResults, id])
+    }
   }
 
   const handleCreateResult = () => {
     if (newResult.title.trim() === "") return
 
-    const result: Result = {
-      id: Math.max(...results.map(r => r.id), 0) + 1,
-      projectId: Number.parseInt(newResult.projectId) || 1,
+    const result = {
+      id: results.length + 1,
       title: newResult.title,
       description: newResult.description,
+      date: new Date().toISOString().split("T")[0],
+      projectId: Number.parseInt(newResult.projectId) || 1,
+      relatedHypotheses: [],
       findings: newResult.findings,
       conclusion: newResult.conclusion,
-      status: newResult.status as "supports" | "contradicts" | "partially_supports" | "inconclusive",
-      confidence: newResult.confidence as "high" | "medium" | "low",
-      relatedHypotheses: newResult.relatedHypotheses,
-      date: new Date().toISOString().split("T")[0],
+      status: newResult.status,
+      confidence: newResult.confidence,
     }
 
-    const updatedResults = [...results, result]
-    setResults(updatedResults)
-    
-    // Save to storage
-    const savedData = storage.loadData()
-    if (savedData) {
-      storage.saveData({
-        ...savedData,
-        results: updatedResults
-      })
-    }
-    
+    setResults([...results, result])
     setNewResult({
       title: "",
-      projectId: "",
       description: "",
+      projectId: "",
       findings: "",
       conclusion: "",
       status: "inconclusive",
       confidence: "low",
-      relatedHypotheses: [],
     })
     setOpen(false)
-  }
-
-  const handleViewDetails = (result: Result) => {
-    setSelectedResult(result)
-    setDetailsOpen(true)
   }
 
   const getStatusIcon = (status: string) => {
@@ -177,16 +183,13 @@ export default function ResultsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="project">Research Project</Label>
-                <Select onValueChange={(value: string) => setNewResult({ ...newResult, projectId: value })}>
+                <Select onValueChange={(value) => setNewResult({ ...newResult, projectId: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id.toString()}>
-                        {project.title}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="1">Climate Change Impact on Marine Ecosystems</SelectItem>
+                    <SelectItem value="2">Machine Learning for Medical Diagnosis</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -225,7 +228,7 @@ export default function ResultsPage() {
                   <Label htmlFor="status">Hypothesis Status</Label>
                   <Select
                     defaultValue="inconclusive"
-                    onValueChange={(value: string) => setNewResult({ ...newResult, status: value })}
+                    onValueChange={(value) => setNewResult({ ...newResult, status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
@@ -242,7 +245,7 @@ export default function ResultsPage() {
                   <Label htmlFor="confidence">Confidence Level</Label>
                   <Select
                     defaultValue="low"
-                    onValueChange={(value: string) => setNewResult({ ...newResult, confidence: value })}
+                    onValueChange={(value) => setNewResult({ ...newResult, confidence: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select confidence" />
@@ -321,81 +324,13 @@ export default function ResultsPage() {
                 <span className="text-gray-300 dark:text-gray-600">•</span>
                 {getConfidenceBadge(result.confidence)}
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleViewDetails(result)}>
+              <Button variant="outline" size="sm">
                 View Details
               </Button>
             </CardFooter>
           </Card>
         ))}
       </div>
-
-      {/* Result Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selectedResult?.title}</DialogTitle>
-            <DialogDescription>
-              {selectedResult?.date} • Project ID: {selectedResult?.projectId}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedResult && (
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Description:</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {selectedResult.description}
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Findings:</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                  {selectedResult.findings}
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Conclusion:</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                  {selectedResult.conclusion}
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2">Hypothesis Status:</h4>
-                  <div className="flex items-center gap-1">
-                    {getStatusIcon(selectedResult.status)}
-                    <span className="text-sm">{getStatusText(selectedResult.status)}</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Confidence Level:</h4>
-                  {getConfidenceBadge(selectedResult.confidence)}
-                </div>
-              </div>
-              
-              {selectedResult.relatedHypotheses.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Related Hypotheses:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedResult.relatedHypotheses.map((id) => (
-                      <div key={id} className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded-full">
-                        Hypothesis #{id}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailsOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

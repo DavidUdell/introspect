@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 import { Beaker, BookOpen, BrainCircuit, Lightbulb, RefreshCw } from "lucide-react"
 import { useState } from "react"
 import OnboardingFlow from "@/components/onboarding-flow"
@@ -17,7 +18,16 @@ export default function Home() {
             <BrainCircuit className="h-6 w-6 text-purple-600" />
             <h1 className="text-xl font-bold">Introspect</h1>
           </div>
-
+          <div className="flex items-center gap-4">
+            <Link href="/auth/login">
+              <Button variant="ghost" size="sm">
+                Login
+              </Button>
+            </Link>
+            <Link href="/auth/register">
+              <Button size="sm">Sign Up</Button>
+            </Link>
+          </div>
         </div>
       </header>
 
