@@ -16,16 +16,54 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Plus, BookOpen, FileText, LinkIcon, Search, Tag } from "lucide-react"
-import { storage, type Reading, type Project } from "@/lib/storage"
 
 // Sample reading data
-const initialReadings: any[] = []
+const initialReadings = [
+  {
+    id: 1,
+    title: "Climate Change Effects on Marine Biodiversity: A Systematic Review",
+    authors: "Johnson, M., Smith, A., & Williams, R.",
+    source: "Journal of Marine Biology",
+    year: 2022,
+    type: "journal",
+    tags: ["climate change", "marine biology", "biodiversity"],
+    notes:
+      "Comprehensive review of 50+ studies showing correlation between temperature rise and species decline. Key finding: 1°C increase leads to approximately 10% biodiversity loss in sensitive reef ecosystems.",
+    relatedHypotheses: [1, 2],
+    dateAdded: "2023-09-15",
+  },
+  {
+    id: 2,
+    title: "Neural Networks in Early Disease Detection: A Review",
+    authors: "Chen, L., & Garcia, P.",
+    source: "AI in Medicine",
+    year: 2021,
+    type: "journal",
+    tags: ["machine learning", "neural networks", "medical diagnosis"],
+    notes:
+      "Explores various neural network architectures for medical imaging analysis. Convolutional networks showed best performance for cardiovascular imaging.",
+    relatedHypotheses: [3],
+    dateAdded: "2023-08-22",
+  },
+  {
+    id: 3,
+    title: "Ocean Warming and Coral Bleaching: New Evidence",
+    authors: "Coral Reef Alliance",
+    source: "https://coral.org/research/warming",
+    year: 2023,
+    type: "website",
+    tags: ["coral reefs", "ocean warming", "bleaching events"],
+    notes:
+      "Latest data on bleaching events worldwide. Interactive maps showing correlation between temperature anomalies and bleaching severity.",
+    relatedHypotheses: [1],
+    dateAdded: "2023-10-05",
+  },
+]
 
 export default function ReadingsPage() {
-  const [readings, setReadings] = useState<Reading[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
+  const [readings, setReadings] = useState(initialReadings)
   const [newReading, setNewReading] = useState({
     title: "",
     authors: "",
@@ -38,57 +76,27 @@ export default function ReadingsPage() {
   })
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
-  const [selectedReading, setSelectedReading] = useState<Reading | null>(null)
-  const [detailsOpen, setDetailsOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState("newest")
-
-  // Load data on mount
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        const savedData = storage.loadData()
-        if (savedData) {
-          setReadings(savedData.readings)
-          setProjects(savedData.projects)
-        }
-      } catch (err) {
-        console.error("Error loading data:", err)
-      }
-    }
-
-    loadData()
-  }, [])
 
   const handleCreateReading = () => {
     if (newReading.title.trim() === "") return
 
-    const reading: Reading = {
-      id: Math.max(...readings.map(r => r.id), 0) + 1,
-      projectId: 1, // Default to first project for now
+    const reading = {
+      id: readings.length + 1,
       title: newReading.title,
       authors: newReading.authors,
       source: newReading.source,
       year: Number.parseInt(newReading.year),
-      type: newReading.type as "journal" | "book" | "conference" | "website" | "other",
-      tags: newReading.tags.split(",").map(tag => tag.trim()).filter(tag => tag !== ""),
+      type: newReading.type,
+      tags: newReading.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag !== ""),
       notes: newReading.notes,
-      relatedHypotheses: newReading.relatedHypotheses,
+      relatedHypotheses: [],
       dateAdded: new Date().toISOString().split("T")[0],
     }
 
-    const updatedReadings = [...readings, reading]
-    setReadings(updatedReadings)
-    
-    // Save to storage
-    const savedData = storage.loadData()
-    if (savedData) {
-      storage.saveData({
-        ...savedData,
-        readings: updatedReadings
-      })
-    }
-    
+    setReadings([...readings, reading])
     setNewReading({
       title: "",
       authors: "",
@@ -102,31 +110,7 @@ export default function ReadingsPage() {
     setOpen(false)
   }
 
-  const handleViewDetails = (reading: Reading) => {
-    setSelectedReading(reading)
-    setDetailsOpen(true)
-  }
-
   const filteredReadings = activeTab === "all" ? readings : readings.filter((reading) => reading.type === activeTab)
-
-  const filteredAndSortedReadings = filteredReadings
-    .filter(reading => 
-      reading.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reading.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reading.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
-        case "oldest":
-          return new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime()
-        case "title":
-          return a.title.localeCompare(b.title)
-        default:
-          return 0
-      }
-    })
 
   return (
     <div className="space-y-6">
@@ -186,7 +170,7 @@ export default function ReadingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="type">Type</Label>
-                <Select defaultValue="journal" onValueChange={(value: string) => setNewReading({ ...newReading, type: value })}>
+                <Select defaultValue="journal" onValueChange={(value) => setNewReading({ ...newReading, type: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -233,14 +217,9 @@ export default function ReadingsPage() {
       <div className="flex items-center space-x-4">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input 
-            placeholder="Search readings..." 
-            className="pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <Input placeholder="Search readings..." className="pl-9" />
         </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
+        <Select defaultValue="newest">
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -262,7 +241,7 @@ export default function ReadingsPage() {
         </TabsList>
         <TabsContent value={activeTab} className="mt-6">
           <div className="space-y-4">
-            {filteredAndSortedReadings.map((reading) => (
+            {filteredReadings.map((reading) => (
               <Card key={reading.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -295,11 +274,7 @@ export default function ReadingsPage() {
                 </CardContent>
                 <CardFooter className="flex justify-between text-xs text-gray-500">
                   <span>Added: {reading.dateAdded}</span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => handleViewDetails(reading)}
-                  >
+                  <Button variant="ghost" size="sm">
                     View Details
                   </Button>
                 </CardFooter>
@@ -308,72 +283,6 @@ export default function ReadingsPage() {
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Reading Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selectedReading?.title}</DialogTitle>
-            <DialogDescription>
-              {selectedReading?.authors} • {selectedReading?.year} • {selectedReading?.source}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedReading && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Type:</span> {selectedReading.type}
-                </div>
-                <div>
-                  <span className="font-medium">Added:</span> {selectedReading.dateAdded}
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Notes:</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                  {selectedReading.notes || "No notes added."}
-                </p>
-              </div>
-              
-              {selectedReading.tags.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Tags:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedReading.tags.map((tag, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full"
-                      >
-                        <Tag className="h-3 w-3 mr-1 text-gray-500" />
-                        {tag}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {selectedReading.relatedHypotheses.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Related Hypotheses:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedReading.relatedHypotheses.map((id) => (
-                      <div key={id} className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded-full">
-                        Hypothesis #{id}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailsOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import type React from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
-import { BrainCircuit } from "lucide-react"
+import { BrainCircuit, Settings, User } from "lucide-react"
 
 export default function DashboardLayout({
   children,
@@ -13,14 +13,38 @@ export default function DashboardLayout({
       <header className="sticky top-0 z-10 bg-white dark:bg-gray-950 border-b">
         <div className="container flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <BrainCircuit className="h-6 w-6 text-purple-600" />
-              <h1 className="text-xl font-bold">Introspect</h1>
+            <BrainCircuit className="h-6 w-6 text-purple-600" />
+            <h1 className="text-xl font-bold">Introspect</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard/settings">
+              <Settings className="h-5 w-5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
+            </Link>
+            <Link href="/dashboard/profile">
+              <User className="h-5 w-5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
             </Link>
           </div>
         </div>
         <div className="container px-4 pb-2">
-          {/* Navigation tabs removed - logo now serves as home navigation */}
+          <Tabs defaultValue="projects" className="w-full">
+            <TabsList className="grid grid-cols-5 h-9">
+              <TabsTrigger value="projects" asChild>
+                <Link href="/dashboard">Projects</Link>
+              </TabsTrigger>
+              <TabsTrigger value="hypotheses" asChild>
+                <Link href="/dashboard/hypotheses">Hypotheses</Link>
+              </TabsTrigger>
+              <TabsTrigger value="readings" asChild>
+                <Link href="/dashboard/readings">Readings</Link>
+              </TabsTrigger>
+              <TabsTrigger value="results" asChild>
+                <Link href="/dashboard/results">Results</Link>
+              </TabsTrigger>
+              <TabsTrigger value="overview" asChild>
+                <Link href="/dashboard/overview">Overview</Link>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </header>
 
