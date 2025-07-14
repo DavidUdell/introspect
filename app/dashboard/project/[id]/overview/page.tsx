@@ -1,19 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, BrainCircuit, Calendar, CheckCircle, Clock, X } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { AlertCircle, ArrowLeft, BrainCircuit, Calendar, CheckCircle, Clock, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import { storage, type Project, type Hypothesis, type Reading, type Result } from "@/lib/storage"
 import { useData } from "@/hooks/use-data"
 
 export default function ProjectOverviewPage() {
   const params = useParams()
+  const router = useRouter()
   const projectId = Number(params.id)
-  const { dismissReminder } = useData()
+  const { dismissReminder, deleteProject } = useData()
   const [project, setProject] = useState<Project | null>(null)
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([])
   const [readings, setReadings] = useState<Reading[]>([])
@@ -419,6 +421,11 @@ export default function ProjectOverviewPage() {
     setReminders(prev => prev.filter(r => r.id !== reminderId))
   }
 
+  const handleDeleteProject = () => {
+    deleteProject(projectId)
+    router.push("/dashboard")
+  }
+
   // Calculate project progress based on actual data
   const calculateProgress = () => {
     const totalItems = hypotheses.length + readings.length + results.length
@@ -645,6 +652,45 @@ export default function ProjectOverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Project Section */}
+      <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
+        <CardHeader>
+          <CardTitle className="text-red-700 dark:text-red-300">Danger Zone</CardTitle>
+          <CardDescription className="text-red-600 dark:text-red-400">
+            Actions in this section cannot be undone. Please proceed with caution.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full sm:w-auto">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Project
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the project "{project?.title}" and all associated data including:
+                  <ul className="mt-2 list-disc list-inside space-y-1">
+                    <li>All hypotheses ({hypotheses.length})</li>
+                    <li>All readings ({readings.length})</li>
+                    <li>All results ({results.length})</li>
+                  </ul>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteProject} className="bg-red-600 hover:bg-red-700">
+                  Delete Project
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   )
 } 

@@ -3,11 +3,59 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Beaker, BookOpen, BrainCircuit, Lightbulb, RefreshCw } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import OnboardingFlow from "@/components/onboarding-flow"
+import { storage } from "@/lib/storage"
 
 export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  // Check for existing projects on mount
+  useEffect(() => {
+    const checkExistingProjects = () => {
+      try {
+        const savedData = storage.loadData()
+        if (savedData && savedData.projects && savedData.projects.length > 0) {
+          // User has existing projects, redirect to dashboard
+          router.push("/dashboard")
+        } else {
+          // No existing projects, show landing page
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error("Error checking for existing projects:", err)
+        // On error, show landing page
+        setLoading(false)
+      }
+    }
+
+    checkExistingProjects()
+  }, [router])
+
+  // Show loading state while checking for projects
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+        <header className="sticky top-0 z-10 bg-white dark:bg-gray-950 border-b">
+          <div className="container flex items-center justify-between h-16 px-4">
+            <div className="flex items-center gap-2">
+              <BrainCircuit className="h-6 w-6 text-purple-600" />
+              <h1 className="text-xl font-bold">Introspect</h1>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
