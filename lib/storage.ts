@@ -11,6 +11,7 @@ export interface Project {
   lastUpdated: string
   progress: number
   createdAt: string
+  files?: { url: string }[]
 }
 
 export interface Hypothesis {
