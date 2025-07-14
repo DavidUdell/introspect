@@ -44,6 +44,7 @@ export default function ProjectLayout({
     if (pathname.includes('/hypotheses')) return 'hypotheses'
     if (pathname.includes('/readings')) return 'readings'
     if (pathname.includes('/results')) return 'results'
+    if (pathname.includes('/files')) return 'files'
     return 'overview'
   }
 
@@ -94,6 +95,15 @@ export default function ProjectLayout({
               </TabsTrigger>
               <TabsTrigger value="results" asChild>
                 <Link href={`/dashboard/project/${projectId}/results`}>Results</Link>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Files tab - positioned on its own, set off from the others */}
+          <Tabs value={getActiveTab()} className="w-auto">
+            <TabsList className="h-10">
+              <TabsTrigger value="files" asChild>
+                <Link href={`/dashboard/project/${projectId}/files`}>Files</Link>
               </TabsTrigger>
             </TabsList>
           </Tabs>
